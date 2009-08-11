@@ -2,7 +2,6 @@ package eastsun.jgvm.plaf.android;
 
 import mega.utils.FileChooser;
 import eastsun.jgvm.plaf.android.R;
-import eastsun.jgvm.plaf.android.MainView.WorkerThread;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -11,6 +10,7 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
+import android.widget.TextView;
 
 public class GVmakerAD extends Activity {
 	
@@ -27,7 +27,7 @@ public class GVmakerAD extends Activity {
          
          setContentView(R.layout.main);
          mView = (MainView) findViewById(R.id.mainview);
-         
+         mView.setTextView((TextView) findViewById(R.id.message));
     }
     
     @Override
@@ -44,19 +44,23 @@ public class GVmakerAD extends Activity {
     	return mView.getKeyBoard().doKeyUp(keyCode, event);
     }
 
-    private static final int MENU_OPEN = 1;
-    private static final int MENU_PAUSE = 2;
-    private static final int MENU_RESUME = 3;
+    private static final int MENU_ABOUT = 1;
+    private static final int MENU_OPEN = 2;
+    private static final int MENU_PAUSE = 3;
     private static final int MENU_EXIT = 4;
+    private MenuItem mPause;
         
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
         
-        menu.add(Menu.NONE, MENU_OPEN, Menu.NONE, "Open");
-        menu.add(Menu.NONE, MENU_PAUSE, Menu.NONE, "Pause");
-        menu.add(Menu.NONE, MENU_RESUME, Menu.NONE, "Resume");
-        menu.add(Menu.NONE, MENU_EXIT, Menu.NONE, "Exit");
+        menu.add(Menu.NONE, MENU_ABOUT, Menu.NONE, getString(R.string.MENU_ABOUT));
+        menu.add(Menu.NONE, MENU_OPEN, Menu.NONE, getString(R.string.MENU_OPEN));
+        
+        mPause = menu.add(Menu.NONE, MENU_PAUSE, Menu.NONE, getString(R.string.MENU_PAUSE));
+        mPause.setCheckable(true);
+        
+        menu.add(Menu.NONE, MENU_EXIT, Menu.NONE, getString(R.string.MENU_EXIT));
         
         return true;
     }
@@ -70,9 +74,32 @@ public class GVmakerAD extends Activity {
     	case REQUEST_SELECT:
     		if(resultCode == RESULT_OK) {
     			String fileName = extras.getString(FileChooser.KEY_SELECTED);
-    			mView.load(fileName);
+    			if(mView.load(fileName)) {
+    				mView.resume();
+    			}
     		}
+    		
+    		restorePause();
+			
     	    break;
+    	}
+    }
+    
+    private void restorePause() {
+    	mPause.setEnabled(true);
+		mPause.setChecked(true);
+		switchPauseResume();
+    }
+    
+    private void switchPauseResume() {
+    	if(mPause.isChecked()) {
+    		mView.resume();
+    		mPause.setChecked(false);
+    		mPause.setTitle(getString(R.string.MENU_PAUSE));
+    	} else {
+    		mPause.setChecked(true);
+    		mView.pause();
+    		mPause.setTitle(getString(R.string.MENU_RESUME));
     	}
     }
     
@@ -87,6 +114,8 @@ public class GVmakerAD extends Activity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
         case MENU_OPEN:
+        	
+        	mPause.setEnabled(false);
         	mView.pause();
         	
         	Intent i = new Intent(this, FileChooser.class);
@@ -100,11 +129,11 @@ public class GVmakerAD extends Activity {
             return true;
             
         case MENU_PAUSE:
-        	mView.pause();
+        	switchPauseResume();
             return true;
             
-        case MENU_RESUME:
-        	mView.resume();
+        case MENU_ABOUT:
+        	// TODO: pop about window
             return true;
             
         case MENU_EXIT:

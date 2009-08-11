@@ -10,9 +10,13 @@ import java.io.InputStream;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.AttributeSet;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.widget.TextView;
 
 /**
  * @version Aug 10, 2009
@@ -25,7 +29,10 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
     ScreenPane mScreen;
     KeyBoard mKeyBoard;
     WorkerThread mThread;
+    TextView mStatusText;
     
+    
+    // TODO: move this hack for resource loading
     private static MainView sCurrent;
     public static MainView getCurrentView() {
     	return sCurrent;
@@ -40,7 +47,7 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
         				   mKeyBoard.getKeyModel()
         				  );
         mScreen = new ScreenPane(mVM);
-                
+                       
         // register our interest in hearing about changes to our surface
         SurfaceHolder holder = getHolder();
         holder.addCallback(this);
@@ -57,20 +64,34 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 	public KeyBoard getKeyBoard() {
 		return mKeyBoard;
 	}
-
-    private void setMsg(final String msg) {
-
+	
+    public void setTextView(TextView textView) {
+        mStatusText = textView;
     }
-    
+        
     private synchronized WorkerThread getThread() {
     	return mThread;
+    }
+    
+    private synchronized void createThread() {
+    	WorkerThread thread = new WorkerThread(new Handler() {
+        	@Override
+            public void handleMessage(Message m) {
+                mStatusText.setText(m.getData().getString("text"));
+            }
+        });
+    	
+    	thread.setRunning(true);
+    	thread.setSurfaceHolder(getHolder());
+    	thread.start();
+    	mThread = thread;
     }
     
     public void pause() {
     	WorkerThread thread = getThread();
     	if(thread != null) {
     		thread.setState(WorkerThread.STATE_PAUSE);
-    		setMsg("Pause");
+    		thread.sendMessage("Pause");
     	}
     }
     
@@ -78,7 +99,7 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
     	WorkerThread thread = getThread();
     	if(thread != null) {
     		thread.setState(WorkerThread.STATE_RUNNING);
-    		setMsg("Running");
+    		thread.sendMessage("Running");
     	}
     }
     
@@ -110,7 +131,7 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
     	}
     }
         
-    public void load(String fileName) {
+    public boolean load(String fileName) {
     	LavApp lavApp = null;
     	
         try {
@@ -118,19 +139,13 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
             lavApp = LavApp.createLavApp(in);
         } catch (Exception ex) {
             android.util.Log.e("MainView", ex.toString());
-            return;
+            return false;
         }
         
         stop();
         mVM.loadApp(lavApp);
-        synchronized(this) {
-        	WorkerThread thread = new WorkerThread();
-        	thread.setRunning(true);
-        	thread.setSurfaceHolder(getHolder());
-        	thread.start();
-        	mThread = thread;
-        }
-        resume();
+        createThread();
+        return true;
     }
     
     class WorkerThread extends Thread {
@@ -144,7 +159,10 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
         public static final int STATE_EXITED = 3;
 		private int mState = STATE_PAUSE;
 
-		public WorkerThread() {
+		Handler mHandler;
+		
+		public WorkerThread(Handler handler) {
+			mHandler = handler;
 		}
 		
 		public synchronized void setSurfaceHolder(SurfaceHolder surfaceHolder) {
@@ -175,7 +193,9 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 		@Override
 		public void run() {			
 			try {
-				int step = 0;
+				long step = 0;
+				long lastTick = 0;
+				final int inteval = 100;
 				
 				while (mRun && !isInterrupted()) {
 					
@@ -184,16 +204,31 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 					}
 					
 					if (!mVM.isEnd()) {
-
+						
 						mVM.nextStep();
 						step++;
 
 						refreshOnDirty();
 
-						if (step == 100) {
-							step = 0;
+						if (step % inteval == 0) {
+							
+							long currentTick = System.currentTimeMillis();
+							long elapsedTick = currentTick - lastTick;
+							if( elapsedTick > 1000 ) {
+								float frenquence = (step * 1000 / (float)elapsedTick);
+								sendMessage("Frenquence: " + String.valueOf(frenquence) );
+								step = 0;
+								lastTick = currentTick;
+							}
+							
 							Thread.sleep(0, 100);
 						}
+						
+					} else {
+						if(step != 0) {
+							sendMessage("Stopped");
+						}
+						step = 0;
 					}
 				}
 			} catch (Exception ex) {
@@ -201,10 +236,18 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 			} finally {
 				mVM.dispose();
 				setState(STATE_EXITED);
-				setMsg("Exited");
+				sendMessage("Exited");
 			}
 		}
 		
+	    public void sendMessage(final String text) {
+	    	Message msg = mHandler.obtainMessage();
+	        Bundle b = new Bundle();
+	        b.putString("text", text);
+	        msg.setData(b);
+	        mHandler.sendMessage(msg);
+	    }
+	    
 		private void refreshOnDirty() {
 			Canvas c = null;
 			if(mScreen.isDirty()) {
