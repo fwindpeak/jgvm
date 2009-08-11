@@ -11,8 +11,6 @@ import java.io.InputStream;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.util.AttributeSet;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
@@ -38,7 +36,7 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
     	
     	mKeyBoard = new KeyBoard();
         mVM = JGVM.newGVM( new GvmConfig(), 
-        				   new DefaultFileModel(new FileSys("/sdcard/gvm/")),
+        				   new DefaultFileModel(new FileSys(getRoot())),
         				   mKeyBoard.getKeyModel()
         				  );
         mScreen = new ScreenPane(mVM);
@@ -46,11 +44,14 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
         // register our interest in hearing about changes to our surface
         SurfaceHolder holder = getHolder();
         holder.addCallback(this);
-        mThread = new WorkerThread(holder);
 
         setFocusable(true); // make sure we get key events
         
         sCurrent = this;
+    }
+    
+    public String getRoot() {
+    	return "/sdcard/gvm/";
     }
     
 	public KeyBoard getKeyBoard() {
@@ -61,62 +62,57 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 
     }
     
-    private static final int MENU_OPEN = 1;
-    private static final int MENU_PAUSE = 2;
-    private static final int MENU_RESUME = 3;
-    private static final int MENU_EXIT = 4;
+    public void pause() {
+    	if(mThread != null && mThread.isAlive()) {
+    		mThread.setState(WorkerThread.STATE_PAUSE);
+    	}
+		setMsg("Pause");
+    }
     
-    public boolean doCreateOptionsMenu(Menu menu) {
+    public void resume() {
+    	if(mThread != null && mThread.isAlive()) {
+    		mThread.setState(WorkerThread.STATE_RUNNING);
+    	}
+        setMsg("Running");
+    }
+    
+    public void stop() {
     	
-        menu.add(Menu.NONE, MENU_OPEN, Menu.NONE, "Open");
-        menu.add(Menu.NONE, MENU_PAUSE, Menu.NONE, "Pause");
-        menu.add(Menu.NONE, MENU_RESUME, Menu.NONE, "Resume");
-        menu.add(Menu.NONE, MENU_EXIT, Menu.NONE, "Exit");
-        
-        return true;
+    	if(mThread != null && mThread.isAlive()) {
+    		
+	        boolean retry = true;
+	        mThread.setRunning(false);
+	        while (retry) {
+	            try {
+	                mThread.join();
+	                retry = false;
+	            } catch (InterruptedException e) {
+	            	//
+	            }
+	        }
+	        
+	        mThread = null;
+    	}
     }
     
-    public boolean doOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case MENU_OPEN:
-            	mThread.setState(WorkerThread.STATE_PAUSE);
-                setMsg("Pause");
-                
-                openLavFile("/sdcard/gvm/Lava/MyWorld.lav");
-                return true;
-                
-            case MENU_PAUSE:
-            	mThread.setState(WorkerThread.STATE_PAUSE);
-        		setMsg("Pause");
-                return true;
-                
-            case MENU_RESUME:
-            	mThread.setState(WorkerThread.STATE_RUNNING);
-                setMsg("Running");
-                return true;
-                
-            case MENU_EXIT:
-            	// TODO: exit by send message
-            	surfaceDestroyed(getHolder());
-                System.exit(0);
-                return true;
-        }
-
-        return false;
-    }
-
-    private void openLavFile(String fileName) {
+    public void load(String fileName) {
     	InputStream in = null;
         try {
             in = new FileInputStream(fileName);
             LavApp lavApp = LavApp.createLavApp(in);
+            mVM.loadApp(lavApp);
             
-            if(!mVM.isEnd()) {
-            	mVM.dispose();
+            if(mThread == null || !mThread.isAlive()) {
+            	mThread = new WorkerThread(getHolder());
+            	mThread.setState(WorkerThread.STATE_RUNNING);
+            	mThread.setRunning(true);
+            	mThread.start();
+            }
+            else
+            {
+            	mThread.setState(WorkerThread.STATE_RUNNING);
             }
             
-            mVM.loadApp(lavApp);
-            mThread.setState(WorkerThread.STATE_RUNNING);
             setMsg("Running");
         } catch (Exception ex) {
             System.err.println(ex);
@@ -142,9 +138,9 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 		/* Callback invoked when the surface dimensions change. */
 		public void setSurfaceSize(int width, int height) {
 			// synchronized to make sure these all change atomically
-			//synchronized (mSurfaceHolder) {
+			synchronized (mSurfaceHolder) {
 				mScreen.setSize(width, height);
-			//}
+			}
 		}
 
 		public void setRunning(boolean b) {
@@ -214,28 +210,20 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int width,
 			int height) {
-		mThread.setSurfaceSize(width, height);
+		if(mThread != null) {
+			mThread.setSurfaceSize(width, height);
+		}
 	}
 
 	@Override
 	public void surfaceCreated(SurfaceHolder holder) {
-		mThread.setRunning(true);
-        mThread.start();
+		//
 	}
 
 	@Override
 	public void surfaceDestroyed(SurfaceHolder holder) {
         // we have to tell mThread to shut down & wait for it to finish, or else
         // it might touch the Surface after we return and explode
-        boolean retry = true;
-        mThread.setRunning(false);
-        while (retry) {
-            try {
-                mThread.join();
-                retry = false;
-            } catch (InterruptedException e) {
-            	//
-            }
-        }
+        stop();
 	}
 }
