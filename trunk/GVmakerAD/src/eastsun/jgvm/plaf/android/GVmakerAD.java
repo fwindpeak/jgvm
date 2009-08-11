@@ -20,15 +20,15 @@ public class GVmakerAD extends Activity {
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
-    	 super.onCreate(savedInstanceState);
-         
-         // turn off the window's title bar
-         requestWindowFeature(Window.FEATURE_NO_TITLE);
-         
-         setContentView(R.layout.main);
-         mView = (MainView) findViewById(R.id.mainview);
-         mView.setTextView((TextView) findViewById(R.id.message));
-    }
+		// turn off the window's title bar
+		requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+		super.onCreate(savedInstanceState);
+
+		setContentView(R.layout.main);
+		mView = (MainView) findViewById(R.id.mainview);
+		mView.setTextView((TextView) findViewById(R.id.message));
+	}
     
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
