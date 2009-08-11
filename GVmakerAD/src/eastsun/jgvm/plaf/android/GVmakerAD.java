@@ -120,7 +120,7 @@ public class GVmakerAD extends Activity {
         	
         	i.putExtra(FileChooser.KEY_TITLE, mView.getRoot() + "*.lav");
         	i.putExtra(FileChooser.KEY_ROOT, mView.getRoot());
-        	i.putExtra(FileChooser.KEY_FILTER, "[ _\\-A-Za-z0-9]*.lav");
+        	i.putExtra(FileChooser.KEY_FILTER, "[ _\\-A-Za-z0-9\u4e00-\u9fa5]*.lav");
         	
         	startActivityForResult(i, REQUEST_SELECT);
         	
