@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
@@ -99,11 +100,19 @@ public class FileChooser extends ListActivity {
 
     @Override
     protected void onListItemClick(ListView l, View v, int position, long id) {
-
-        Intent i = new Intent();
+    	
+    	Intent i = new Intent();
         i.putExtra(KEY_SELECTED, mFileList.get(position));
         setResult(RESULT_OK, i);
-
+        
         finish();
     }
+    
+    @Override 
+    public boolean onKeyDown(int keyCode, KeyEvent event) {  
+            if(keyCode == KeyEvent.KEYCODE_BACK) {
+                setResult(RESULT_CANCELED, new Intent());
+            }
+            return super.onKeyDown(keyCode, event);
+    } 
 }
