@@ -252,7 +252,7 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 							long elapsedTick = currentTick - lastTick;
 							if( elapsedTick > 1000 ) {
 								float frenquence = (step * 1000 / (float)elapsedTick);
-								sendMessage("Frenquence: " + String.valueOf(frenquence) );
+								sendMessage("Frequency: " + String.valueOf(frenquence) );
 								step = 0;
 								lastTick = currentTick;
 							}
