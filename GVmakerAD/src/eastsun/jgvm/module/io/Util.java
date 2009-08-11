@@ -10,6 +10,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
 
+import android.R;
+
 /**
  * 一个工具类,主要提供字符点阵库以及一些实用方法
  * @author Eastsun
@@ -451,19 +453,26 @@ public final class Util {
     static {
         try {
             InputStream in = null;
-            in = Util.class.getResourceAsStream("/eastsun/jgvm/module/io/res/gbfont.bin");
+            
+            android.content.Context con = eastsun.jgvm.plaf.android.MainView.getCurrentView().getContext();
+            
+            in = con.getResources().openRawResource(eastsun.jgvm.plaf.android.R.raw.gbfont);
+            //in = Util.class.getResourceAsStream("/eastsun/jgvm/module/io/res/gbfont.bin");
             gb12Data = new byte[in.available()];
             readData(in, gb12Data);
 
-            in = Util.class.getResourceAsStream("/eastsun/jgvm/module/io/res/gbfont16.bin");
+            in = con.getResources().openRawResource(eastsun.jgvm.plaf.android.R.raw.gbfont16);
+            //in = Util.class.getResourceAsStream("/eastsun/jgvm/module/io/res/gbfont16.bin");
             gb16Data = new byte[in.available()];
             readData(in, gb16Data);
 
-            in = Util.class.getResourceAsStream("/eastsun/jgvm/module/io/res/ascii.bin");
+            in = con.getResources().openRawResource(eastsun.jgvm.plaf.android.R.raw.ascii);
+            //in = Util.class.getResourceAsStream("/eastsun/jgvm/module/io/res/ascii.bin");
             ascii12Data = new byte[in.available()];
             readData(in, ascii12Data);
 
-            in = Util.class.getResourceAsStream("/eastsun/jgvm/module/io/res/ascii8.bin");
+            in = con.getResources().openRawResource(eastsun.jgvm.plaf.android.R.raw.ascii8);
+            //in = Util.class.getResourceAsStream("/eastsun/jgvm/module/io/res/ascii8.bin");
             ascii16Data = new byte[in.available()];
             readData(in, ascii16Data);
         } catch (IOException ex) {

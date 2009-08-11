@@ -41,7 +41,10 @@ public final class SpellInfo {
         //第二,三个字节表示总共有多少个拼音
         //接下来为拼音数据,每个拼音数据的格式为"对应汉字数(一字节) 拼音字符串 |"
         //后面是汉字数据,按拼音出现的次序顺序排列
-        InputStream in = SpellInfo.class.getResourceAsStream(SPELL_DATA);
+    	
+    	android.content.Context con = eastsun.jgvm.plaf.android.MainView.getCurrentView().getContext();
+    	InputStream in = con.getResources().openRawResource(eastsun.jgvm.plaf.android.R.raw.spell);
+        //InputStream in = SpellInfo.class.getResourceAsStream(SPELL_DATA);
         SpellNode[] tmp = null;
         try {
             int version = in.read();
