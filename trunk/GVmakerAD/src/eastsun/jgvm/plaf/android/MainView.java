@@ -49,7 +49,7 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
         
         sCurrent = this;
     }
-    
+        
     public String getRoot() {
     	return "/sdcard/gvm/";
     }
@@ -62,61 +62,75 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 
     }
     
+    private synchronized WorkerThread getThread() {
+    	return mThread;
+    }
+    
     public void pause() {
-    	if(mThread != null && mThread.isAlive()) {
-    		mThread.setState(WorkerThread.STATE_PAUSE);
+    	WorkerThread thread = getThread();
+    	if(thread != null) {
+    		thread.setState(WorkerThread.STATE_PAUSE);
+    		setMsg("Pause");
     	}
-		setMsg("Pause");
     }
     
     public void resume() {
-    	if(mThread != null && mThread.isAlive()) {
-    		mThread.setState(WorkerThread.STATE_RUNNING);
+    	WorkerThread thread = getThread();
+    	if(thread != null) {
+    		thread.setState(WorkerThread.STATE_RUNNING);
+    		setMsg("Running");
     	}
-        setMsg("Running");
     }
     
     public void stop() {
-    	
-    	if(mThread != null && mThread.isAlive()) {
+    	WorkerThread thread = getThread();
+    	if(thread != null && thread.isAlive()) {
     		
-	        boolean retry = true;
-	        mThread.setRunning(false);
-	        while (retry) {
+	        int retry = 0;
+	        thread.setRunning(false);
+	        while (retry >= 0 && retry < 10) {
 	            try {
-	                mThread.join();
-	                retry = false;
+	            	thread.join(100);
+	                retry = thread.isAlive()? retry + 1:-1;
 	            } catch (InterruptedException e) {
-	            	//
+	            	android.util.Log.e("MainView", e.toString());
 	            }
 	        }
 	        
-	        mThread = null;
+	        // force to stop
+	        if(thread.isAlive()) {
+	        	thread.interrupt();
+	        	try {
+					thread.join();
+				} catch (InterruptedException e) {
+					android.util.Log.e("MainView", e.toString());
+				}
+	        }
+	        
     	}
     }
-    
+        
     public void load(String fileName) {
-    	InputStream in = null;
+    	LavApp lavApp = null;
+    	
         try {
-            in = new FileInputStream(fileName);
-            LavApp lavApp = LavApp.createLavApp(in);
-            mVM.loadApp(lavApp);
-            
-            if(mThread == null || !mThread.isAlive()) {
-            	mThread = new WorkerThread(getHolder());
-            	mThread.setState(WorkerThread.STATE_RUNNING);
-            	mThread.setRunning(true);
-            	mThread.start();
-            }
-            else
-            {
-            	mThread.setState(WorkerThread.STATE_RUNNING);
-            }
-            
-            setMsg("Running");
+        	InputStream in = new FileInputStream(fileName);
+            lavApp = LavApp.createLavApp(in);
         } catch (Exception ex) {
-            System.err.println(ex);
+            android.util.Log.e("MainView", ex.toString());
+            return;
         }
+        
+        stop();
+        mVM.loadApp(lavApp);
+        synchronized(this) {
+        	WorkerThread thread = new WorkerThread();
+        	thread.setRunning(true);
+        	thread.setSurfaceHolder(getHolder());
+        	thread.start();
+        	mThread = thread;
+        }
+        resume();
     }
     
     class WorkerThread extends Thread {
@@ -130,24 +144,27 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
         public static final int STATE_EXITED = 3;
 		private int mState = STATE_PAUSE;
 
-		public WorkerThread(SurfaceHolder surfaceHolder) {
-			// get handles to some important objects
+		public WorkerThread() {
+		}
+		
+		public synchronized void setSurfaceHolder(SurfaceHolder surfaceHolder) {
 			mSurfaceHolder = surfaceHolder;
 		}
 
 		/* Callback invoked when the surface dimensions change. */
-		public void setSurfaceSize(int width, int height) {
-			// synchronized to make sure these all change atomically
-			synchronized (mSurfaceHolder) {
-				mScreen.setSize(width, height);
-			}
+		public synchronized void setSurfaceSize(int width, int height) {
+			mScreen.setSize(width, height);
+		}
+		
+		public synchronized SurfaceHolder getSurfaceHolder() {
+			return mSurfaceHolder;
 		}
 
 		public void setRunning(boolean b) {
 			mRun = b;
 		}
 		
-		public synchronized void setState(int state) {
+		public void setState(int state) {
 			mState = state;
 		}
 		
@@ -180,7 +197,7 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 					}
 				}
 			} catch (Exception ex) {
-				System.out.println(ex);
+				android.util.Log.e("WorkerThread", ex.toString());
 			} finally {
 				mVM.dispose();
 				setState(STATE_EXITED);
@@ -191,16 +208,20 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 		private void refreshOnDirty() {
 			Canvas c = null;
 			if(mScreen.isDirty()) {
-				mScreen.update();
-				try {
-					c = mSurfaceHolder.lockCanvas(null);
-					//synchronized (mSurfaceHolder) {
-						// if (mMode == STATE_RUNNING) updatePhysics();
-						mScreen.refresh(c);
-					//}
-				} finally {
-					if (c != null) {
-						mSurfaceHolder.unlockCanvasAndPost(c);
+				SurfaceHolder holder = getSurfaceHolder();
+				if( holder != null ) {
+					mScreen.update();
+					try {
+						c = holder.lockCanvas(null);
+						synchronized (this) {
+							mScreen.refresh(c);
+						}
+					} catch (Exception ex) {
+						android.util.Log.e("WorkerThread", ex.toString());
+					} finally {
+						if (c != null) {
+							holder.unlockCanvasAndPost(c);
+						}
 					}
 				}
 			}
@@ -210,20 +231,33 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int width,
 			int height) {
-		if(mThread != null) {
-			mThread.setSurfaceSize(width, height);
+		synchronized(this) {
+			WorkerThread thread = getThread();
+			if(thread != null) {
+				thread.setSurfaceSize(width, height);
+			}
 		}
 	}
 
 	@Override
 	public void surfaceCreated(SurfaceHolder holder) {
-		//
+		synchronized(this) {
+			WorkerThread thread = getThread();
+			if(thread != null) {
+				thread.setSurfaceHolder(holder);
+			}
+		}
 	}
 
 	@Override
 	public void surfaceDestroyed(SurfaceHolder holder) {
-        // we have to tell mThread to shut down & wait for it to finish, or else
+        // we have to tell thread to shut down & wait for it to finish, or else
         // it might touch the Surface after we return and explode
-        stop();
+		synchronized(this) {
+			WorkerThread thread = getThread();
+			if(thread != null) {
+				thread.setSurfaceHolder(null);
+			}
+		}
 	}
 }
