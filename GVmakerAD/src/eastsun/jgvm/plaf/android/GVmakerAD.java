@@ -74,9 +74,7 @@ public class GVmakerAD extends Activity {
     	case REQUEST_SELECT:
     		if(resultCode == RESULT_OK) {
     			String fileName = extras.getString(FileChooser.KEY_SELECTED);
-    			if(mView.load(fileName)) {
-    				mView.resume();
-    			}
+    			mView.load(fileName);
     		}
     		
     		restorePause();

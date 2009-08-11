@@ -73,7 +73,7 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
     	return mThread;
     }
     
-    private synchronized void createThread() {
+    private synchronized WorkerThread create() {
     	WorkerThread thread = new WorkerThread(new Handler() {
         	@Override
             public void handleMessage(Message m) {
@@ -84,22 +84,26 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
     	thread.setRunning(true);
     	thread.setSurfaceHolder(getHolder());
     	thread.start();
+    	
     	mThread = thread;
+    	return thread;
     }
     
     public void pause() {
     	WorkerThread thread = getThread();
     	if(thread != null) {
-    		thread.setState(WorkerThread.STATE_PAUSE);
-    		thread.sendMessage("Pause");
+    		if(thread.setState(WorkerThread.STATE_PAUSE)) {
+    			thread.sendMessage("Pause");
+    		}
     	}
     }
     
     public void resume() {
     	WorkerThread thread = getThread();
     	if(thread != null) {
-    		thread.setState(WorkerThread.STATE_RUNNING);
-    		thread.sendMessage("Running");
+    		if(thread.setState(WorkerThread.STATE_RUNNING)) {
+    			thread.sendMessage("Running");
+    		}
     	}
     }
     
@@ -134,6 +138,8 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
     public boolean load(String fileName) {
     	LavApp lavApp = null;
     	
+    	pause();
+    	
         try {
         	InputStream in = new FileInputStream(fileName);
             lavApp = LavApp.createLavApp(in);
@@ -144,7 +150,8 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
         
         stop();
         mVM.loadApp(lavApp);
-        createThread();
+        create();
+    	
         return true;
     }
     
@@ -154,19 +161,42 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 		private SurfaceHolder mSurfaceHolder;
 		private boolean mRun;
 		
+		public static final int STATE_READY = 0;
 		public static final int STATE_PAUSE = 1;
         public static final int STATE_RUNNING = 2;
-        public static final int STATE_EXITED = 3;
-		private int mState = STATE_PAUSE;
+        public static final int STATE_STOPPED = 3;
+        public static final int STATE_EXITED = 4;
+		private int mState;
 
 		Handler mHandler;
 		
 		public WorkerThread(Handler handler) {
 			mHandler = handler;
+			
+			mState = STATE_READY;
+			sendMessage("Ready");
 		}
 		
-		public synchronized void setSurfaceHolder(SurfaceHolder surfaceHolder) {
-			mSurfaceHolder = surfaceHolder;
+		public synchronized void setSurfaceHolder(SurfaceHolder holder) {
+			mSurfaceHolder = holder;
+			// refresh current screen
+			refresh(holder);
+		}
+		
+		private void refresh(SurfaceHolder holder) {
+			Canvas c = null;
+			try {
+				c = holder.lockCanvas(null);
+				synchronized (this) {
+					mScreen.refresh(c);
+				}
+			} catch (Exception ex) {
+				android.util.Log.e("WorkerThread", ex.toString());
+			} finally {
+				if (c != null) {
+					holder.unlockCanvasAndPost(c);
+				}
+			}
 		}
 
 		/* Callback invoked when the surface dimensions change. */
@@ -182,12 +212,18 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 			mRun = b;
 		}
 		
-		public void setState(int state) {
-			mState = state;
+		public boolean setState(int state) {
+			// must set to loading after exited
+			if(mState >= STATE_STOPPED && state < mState) {
+				return false;
+			} else {
+				mState = state;
+				return true;
+			}
 		}
 		
         public boolean isPaused() {
-            return STATE_PAUSE == mState;
+            return mState <= STATE_PAUSE;
         }
 
 		@Override
@@ -226,7 +262,9 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 						
 					} else {
 						if(step != 0) {
-							sendMessage("Stopped");
+							if(setState(STATE_STOPPED)) {
+								sendMessage("Stopped");
+							}
 						}
 						step = 0;
 					}
@@ -235,8 +273,9 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 				android.util.Log.e("WorkerThread", ex.toString());
 			} finally {
 				mVM.dispose();
-				setState(STATE_EXITED);
-				sendMessage("Exited");
+				if(setState(STATE_EXITED)) {
+					sendMessage("Exited");
+				}
 			}
 		}
 		
@@ -249,23 +288,11 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 	    }
 	    
 		private void refreshOnDirty() {
-			Canvas c = null;
 			if(mScreen.isDirty()) {
 				SurfaceHolder holder = getSurfaceHolder();
 				if( holder != null ) {
 					mScreen.update();
-					try {
-						c = holder.lockCanvas(null);
-						synchronized (this) {
-							mScreen.refresh(c);
-						}
-					} catch (Exception ex) {
-						android.util.Log.e("WorkerThread", ex.toString());
-					} finally {
-						if (c != null) {
-							holder.unlockCanvasAndPost(c);
-						}
-					}
+					refresh(holder);
 				}
 			}
 		}
