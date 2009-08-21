@@ -8,4 +8,5 @@
 <string name="MENU_OPEN">Open</string>
 <string name="MENU_RESUME">Resume</string>
 <string name="welcome">= Welcome to GVmakerAD =\npress \&quot;MENU\&quot; button to start</string>
+<string name="MENU_HELP">Help</string>
 </resources>

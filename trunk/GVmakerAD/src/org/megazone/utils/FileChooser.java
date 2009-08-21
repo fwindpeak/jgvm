@@ -1,4 +1,4 @@
-package mega.utils;
+package org.megazone.utils;
 
 import java.io.File;
 import java.util.ArrayList;

@@ -1,10 +1,22 @@
 package eastsun.jgvm.plaf.android;
 
-import mega.utils.FileChooser;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+
+import org.megazone.utils.FileChooser;
+
 import eastsun.jgvm.plaf.android.R;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.AlertDialog.Builder;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.DialogInterface.OnClickListener;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -44,22 +56,24 @@ public class GVmakerAD extends Activity {
     	return mView.getKeyBoard().doKeyUp(keyCode, event);
     }
 
-    private static final int MENU_ABOUT = 1;
-    private static final int MENU_OPEN = 2;
-    private static final int MENU_PAUSE = 3;
-    private static final int MENU_EXIT = 4;
+    private static final int MENU_OPEN = 1;
+    private static final int MENU_PAUSE = 2;
+    private static final int MENU_HELP = 3;
+    private static final int MENU_ABOUT = 4;
+    private static final int MENU_EXIT = 5;
     private MenuItem mPause;
         
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
         
-        menu.add(Menu.NONE, MENU_ABOUT, Menu.NONE, getString(R.string.MENU_ABOUT));
         menu.add(Menu.NONE, MENU_OPEN, Menu.NONE, getString(R.string.MENU_OPEN));
         
         mPause = menu.add(Menu.NONE, MENU_PAUSE, Menu.NONE, getString(R.string.MENU_PAUSE));
         mPause.setCheckable(true);
         
+        menu.add(Menu.NONE, MENU_HELP, Menu.NONE, getString(R.string.MENU_HELP));
+        menu.add(Menu.NONE, MENU_ABOUT, Menu.NONE, getString(R.string.MENU_ABOUT));
         menu.add(Menu.NONE, MENU_EXIT, Menu.NONE, getString(R.string.MENU_EXIT));
         
         return true;
@@ -111,36 +125,95 @@ public class GVmakerAD extends Activity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-        case MENU_OPEN:
-        	
-        	mPause.setEnabled(false);
-        	mView.pause();
-        	
-        	Intent i = new Intent(this, FileChooser.class);
-        	
-        	i.putExtra(FileChooser.KEY_TITLE, mView.getRoot() + "*.lav");
-        	i.putExtra(FileChooser.KEY_ROOT, mView.getRoot());
-        	i.putExtra(FileChooser.KEY_FILTER, "[ _\\-A-Za-z0-9\u4e00-\u9fa5]*.lav");
-        	
-        	startActivityForResult(i, REQUEST_SELECT);
-        	
-            return true;
-            
-        case MENU_PAUSE:
-        	switchPauseResume();
-            return true;
-            
-        case MENU_ABOUT:
-        	// TODO: pop about window
-            return true;
-            
-        case MENU_EXIT:
-        	// TODO: exit by send message
-        	mView.stop();
-            System.exit(0);
-            return true;
+	        case MENU_OPEN:
+	        	
+	        	mPause.setEnabled(false);
+	        	mView.pause();
+	        	
+	        	Intent i = new Intent(this, FileChooser.class);
+	        	
+	        	i.putExtra(FileChooser.KEY_TITLE, mView.getRoot() + "*.lav");
+	        	i.putExtra(FileChooser.KEY_ROOT, mView.getRoot());
+	        	i.putExtra(FileChooser.KEY_FILTER, "\\w+.lav");
+	        	
+	        	startActivityForResult(i, REQUEST_SELECT);
+	        	
+	            return true;
+	            
+	        case MENU_PAUSE:
+	        	switchPauseResume();
+	            return true;
+	            
+	        case MENU_ABOUT:
+	        	
+	        	//Get the app version
+	    		String version = "(Unknown)";
+	    		try {
+	    		        PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
+	    		        version = pi.versionName;
+	    		} catch (PackageManager.NameNotFoundException e) {
+	    		        android.util.Log.e(getString(R.string.app_name), "Package name not found", e);
+	    		}
+	    		
+	        	onPopup(getString(R.string.app_name) + " " + version, 
+	        			getTextResource(R.raw.about));
+	            return true;
+	        
+	        case MENU_HELP:
+	        	onPopup("Help", getTextResource(R.raw.help));
+	        	return true;
+	        	
+	        case MENU_EXIT:
+	        	// TODO: exit by send message
+	        	mView.stop();
+	            System.exit(0);
+	            return true;
+        }
+
+        return false;
     }
 
-    return false;
+    private String getTextResource(int resourceid) {
+		BufferedReader in = new BufferedReader(
+								new InputStreamReader(
+										getResources().openRawResource(resourceid)));
+		
+		StringBuilder sb = new StringBuilder();
+		try {
+			String line;
+			while ((line = in.readLine()) != null) { // Read line per line.
+				sb.append(line);
+				sb.append("\n");
+			}
+			return sb.toString();
+		} catch (IOException e) {
+			//Should not happen.
+			e.printStackTrace();
+			return "";
+		}
+		
+    }
+    
+    
+    private void onPopup(String title, String message) {
+				
+		// about dialog builder
+        OnClickListener okListener = new OnClickListener() { 
+            // @Override 
+            public void onClick(DialogInterface dialog, int which) { 
+                dialog.cancel(); 
+                return; 
+            } 
+        }; 
+        
+        final Builder popupBuilder = new AlertDialog.Builder(this)
+						        		 .setIcon(R.drawable.icon) 
+						                 .setTitle(title)
+						                 .setMessage(message)
+						                 .setPositiveButton("Done", okListener);
+    
+        Dialog popupDialog; 
+        popupDialog = popupBuilder.create();
+        popupDialog.show(); 
     }
 }
