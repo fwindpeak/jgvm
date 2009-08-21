@@ -20,6 +20,6 @@
           android:layout_centerHorizontal="true"
           android:gravity ="center"
           android:textColor="#88ffffff"
-          android:textSize="24sp"/>
+          android:textSize="20sp"/>
      </RelativeLayout>
 </FrameLayout>
