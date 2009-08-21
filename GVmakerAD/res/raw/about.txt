@@ -13,3 +13,8 @@ You may obtain a copy of the License at
 Source code can be found at
 
     http://code.google.com/p/jgvm/
+	
+=The Lovely Icon=
+Based on icons by Paul Davey aka Mattahan. All rights reserved. 
+http://mattahan.deviantart.com/
+mattahan@gmail.com
