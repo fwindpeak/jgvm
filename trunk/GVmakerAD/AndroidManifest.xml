@@ -3,7 +3,8 @@
       package="eastsun.jgvm.plaf.android"
       android:versionCode="1"
       android:versionName="1.0.0">
-      
+    
+    <uses-sdk android:minSdkVersion="3" />
     <uses-Permission android:name="android.permission.READ_OWNER_DATA"/>
     <uses-Permission android:name="android.permission.WRITE_OWNER_DATA"/>
     
