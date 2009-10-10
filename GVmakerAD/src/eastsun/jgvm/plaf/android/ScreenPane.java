@@ -43,12 +43,7 @@ public class ScreenPane {
     }
     
     public void update() {
-        // TODO: use buffer directly
-    	IntBuffer buffer = IntBuffer.allocate(ScreenModel.WIDTH * ScreenModel.HEIGHT);
-    	buffer.put(mBuffer);
-    	
-        buffer.position(0);
-        mBitmap.copyPixelsFromBuffer(buffer);
+    	mBitmap.setPixels(mBuffer, 0, ScreenModel.WIDTH, 0,0,ScreenModel.WIDTH, ScreenModel.HEIGHT);
         mDirty = false;
     }
     
