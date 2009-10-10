@@ -1,11 +1,8 @@
 package eastsun.jgvm.plaf.android;
 
-import java.nio.IntBuffer;
-
 import eastsun.jgvm.module.JGVM;
 import eastsun.jgvm.module.ScreenModel;
 import eastsun.jgvm.module.event.Area;
-import eastsun.jgvm.module.event.ScreenChangeListener;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -19,34 +16,16 @@ public class ScreenPane {
 
     int[] mBuffer = new int[ScreenModel.WIDTH * ScreenModel.HEIGHT];
     private Bitmap mBitmap;
-    private boolean mDirty;
     
+        
     public ScreenPane(JGVM gvm) {
     	mBitmap = Bitmap.createBitmap(ScreenModel.WIDTH, ScreenModel.HEIGHT, Bitmap.Config.ARGB_8888);
         gvm.setColor(0xff000000, 0xffffffff);
         
         mBufferRect = new Rect(0, 0, ScreenModel.WIDTH, ScreenModel.HEIGHT);
         setSize(ScreenModel.WIDTH, ScreenModel.HEIGHT);
+    }
         
-        gvm.addScreenChangeListener(new ScreenChangeListener() {
-        	
-            public void screenChanged(ScreenModel screenModel, Area area) {
-                screenModel.getRGB(mBuffer, area, 1, 0);
-                mDirty = true;
-            }
-            
-        });
-    }
-    
-    public boolean isDirty() {
-    	return mDirty;
-    }
-    
-    public void update() {
-    	mBitmap.setPixels(mBuffer, 0, ScreenModel.WIDTH, 0,0,ScreenModel.WIDTH, ScreenModel.HEIGHT);
-        mDirty = false;
-    }
-    
     private Rect mBufferRect;
     private Rect mScreenRect;
     
@@ -71,10 +50,19 @@ public class ScreenPane {
     	mScreenRect.bottom += mScreenRect.top;
     }
 
-    public void refresh(Canvas canvas) {
-//        canvas.drawBitmap( mBuffer, 0, ScreenModel.WIDTH, 
-//        				   0, 0, ScreenModel.WIDTH, ScreenModel.HEIGHT, 
-//        				   false, null);
+    public void screenChanged(ScreenModel screenModel, Area area) {
+    	screenModel.getRGB(mBuffer, area, 1, 0);
+    	
+    	synchronized(this) {
+	    	//TODO: area information is unused. 
+	    	mBitmap.setPixels( mBuffer, 0, ScreenModel.WIDTH,
+	    			           0, 0, ScreenModel.WIDTH, ScreenModel.HEIGHT);
+    	}
+    }
+    
+    // refresh current screen to specific canvas
+    public synchronized void refresh(Canvas canvas, Area area) {
+    	//TODO: area information is unused. 
     	canvas.drawBitmap(mBitmap, mBufferRect, mScreenRect, null);
     }
 }
