@@ -3,6 +3,9 @@ package eastsun.jgvm.plaf.android;
 import eastsun.jgvm.module.GvmConfig;
 import eastsun.jgvm.module.JGVM;
 import eastsun.jgvm.module.LavApp;
+import eastsun.jgvm.module.ScreenModel;
+import eastsun.jgvm.module.event.Area;
+import eastsun.jgvm.module.event.ScreenChangeListener;
 import eastsun.jgvm.module.io.DefaultFileModel;
 
 import java.io.FileInputStream;
@@ -22,7 +25,7 @@ import android.widget.TextView;
  * @version Aug 10, 2009
  * @author FantasyDR
  */
-public class MainView extends SurfaceView implements SurfaceHolder.Callback {
+public class MainView extends SurfaceView implements SurfaceHolder.Callback, ScreenChangeListener {
 
     JGVM mVM;
     
@@ -47,11 +50,14 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
         				   mKeyBoard.getKeyModel()
         				  );
         mScreen = new ScreenPane(mVM);
-                       
+        
+        // make itself as the handler
+        mVM.addScreenChangeListener(this);
+
         // register our interest in hearing about changes to our surface
         SurfaceHolder holder = getHolder();
         holder.addCallback(this);
-
+                
         setFocusable(true); // make sure we get key events
         
         sCurrent = this;
@@ -82,7 +88,6 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
         });
     	
     	thread.setRunning(true);
-    	thread.setSurfaceHolder(getHolder());
     	thread.start();
     	
     	mThread = thread;
@@ -155,11 +160,23 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
         return true;
     }
     
+    protected void paint(Area area) {
+    	Canvas c = null;
+    	SurfaceHolder holder = getHolder();
+		try {
+			c = holder.lockCanvas(null);
+			mScreen.refresh(c, area);
+		} catch (Exception ex) {
+			android.util.Log.e("MainView", ex.toString());
+		} finally {
+			if (c != null) {
+				holder.unlockCanvasAndPost(c);
+			}
+		}
+    }
+    
     class WorkerThread extends Thread {
-
-		/** Handle to the surface manager object we interact with */
-		private SurfaceHolder mSurfaceHolder;
-		private boolean mRun;
+    	private boolean mRun;
 		
 		public static final int STATE_READY = 0;
 		public static final int STATE_PAUSE = 1;
@@ -177,37 +194,6 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 			sendMessage("Ready");
 		}
 		
-		public synchronized void setSurfaceHolder(SurfaceHolder holder) {
-			mSurfaceHolder = holder;
-			// refresh current screen
-			refresh(holder);
-		}
-		
-		private void refresh(SurfaceHolder holder) {
-			Canvas c = null;
-			try {
-				c = holder.lockCanvas(null);
-				synchronized (this) {
-					mScreen.refresh(c);
-				}
-			} catch (Exception ex) {
-				android.util.Log.e("WorkerThread", ex.toString());
-			} finally {
-				if (c != null) {
-					holder.unlockCanvasAndPost(c);
-				}
-			}
-		}
-
-		/* Callback invoked when the surface dimensions change. */
-		public synchronized void setSurfaceSize(int width, int height) {
-			mScreen.setSize(width, height);
-		}
-		
-		public synchronized SurfaceHolder getSurfaceHolder() {
-			return mSurfaceHolder;
-		}
-
 		public void setRunning(boolean b) {
 			mRun = b;
 		}
@@ -243,8 +229,6 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 						
 						mVM.nextStep();
 						step++;
-
-						refreshOnDirty();
 
 						if (step % inteval == 0) {
 							
@@ -286,48 +270,32 @@ public class MainView extends SurfaceView implements SurfaceHolder.Callback {
 	        msg.setData(b);
 	        mHandler.sendMessage(msg);
 	    }
-	    
-		private void refreshOnDirty() {
-			if(mScreen.isDirty()) {
-				SurfaceHolder holder = getSurfaceHolder();
-				if( holder != null ) {
-					mScreen.update();
-					refresh(holder);
-				}
-			}
-		}
 	}
 
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int width,
 			int height) {
 		synchronized(this) {
-			WorkerThread thread = getThread();
-			if(thread != null) {
-				thread.setSurfaceSize(width, height);
-			}
+			mScreen.setSize(width, height);
 		}
 	}
 
 	@Override
 	public void surfaceCreated(SurfaceHolder holder) {
 		synchronized(this) {
-			WorkerThread thread = getThread();
-			if(thread != null) {
-				thread.setSurfaceHolder(holder);
-			}
+			paint(null);
 		}
 	}
-
+	
 	@Override
 	public void surfaceDestroyed(SurfaceHolder holder) {
         // we have to tell thread to shut down & wait for it to finish, or else
         // it might touch the Surface after we return and explode
-		synchronized(this) {
-			WorkerThread thread = getThread();
-			if(thread != null) {
-				thread.setSurfaceHolder(null);
-			}
-		}
+	}
+	
+	@Override
+	public void screenChanged(ScreenModel screenModel, Area area) {
+		mScreen.screenChanged(screenModel, area);
+		paint(area);
 	}
 }
