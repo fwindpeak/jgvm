@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    
+    <string name="app_name">GVmakerAD</string>
+<string name="MENU_PAUSE">Pause</string>
+<string name="MENU_ABOUT">About</string>
+<string name="MENU_EXIT">Exit</string>
+<string name="MENU_OPEN">Open</string>
+<string name="MENU_RESUME">Resume</string>
+<string name="welcome">= Welcome to GVmakerAD =\npress \&quot;MENU\&quot; button to start</string>
+<string name="MENU_HELP">Help</string>
+</resources>
