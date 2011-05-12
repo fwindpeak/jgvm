@@ -15,6 +15,7 @@ import android.app.AlertDialog.Builder;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.DialogInterface.OnClickListener;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -22,6 +23,7 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
+import android.view.WindowManager;
 import android.widget.TextView;
 
 public class GVmakerAD extends Activity {
@@ -34,9 +36,10 @@ public class GVmakerAD extends Activity {
     public void onCreate(Bundle savedInstanceState) {
 		// turn off the window's title bar
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
-
+		getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON, 
+				WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 		super.onCreate(savedInstanceState);
-
+		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 		setContentView(R.layout.main);
 		mView = (MainView) findViewById(R.id.mainview);
 		mView.setTextView((TextView) findViewById(R.id.message));
