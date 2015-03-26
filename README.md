@@ -15,3 +15,6 @@ Currently we have a workable J2SE & J2ME version due to EastSun's fantastic job.
 Android version is under construction based on the J2SE version. Search '**GVmakerAD**' in android market to install it.
 
 Sample GVmaker application could be downloaded [here](http://jgvm.googlecode.com/files/GVmaker_app.zip).
+
+---
+[GVmaker_app.zip doanload from github](https://raw.githubusercontent.com/fwindpeak/jgvm/download/GVmaker_app.zip)
